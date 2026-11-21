@@ -63,6 +63,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          file = Path('app/src/main/assets/translations.js')
+          data = file.read_text(encoding='utf-8')
+          assert data.count('1.1.0') == 3, 'Expected source About screen version markers'
+          file.write_text(data.replace('1.1.0', '1.2.0'), encoding='utf-8')
+          PY
           python3 tools/pack.py
           node tests/engine.test.js
           python3 - <<'PY'
