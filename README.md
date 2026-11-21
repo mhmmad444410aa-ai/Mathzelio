@@ -1,29 +1,34 @@
-# Mathzelio Math Games — Android
+# Mathzelio Math Games — Android 1.2.0
 
-Android app: `com.mhmmad.mathzelio` • **1.2.0 (versionCode 4)**.
+**Android package:** `com.mhmmad.mathzelio` · **versionCode:** `4` · **minSdk:** `23` · **targetSdk:** `36`.
 
-**The repository currently has only its release automation. You must upload the project's existing ZIP archive before an APK can be built.**
+The complete source archive **Mathzelio-1.2.0-Source.zip** is already in the repository root. It contains an Android Java/WebView app, offline assets (including pre-rendered 3D-style backgrounds), six worlds, 300 generated levels and ten maths skills. British English, Arabic RTL and Brazilian Portuguese are supported. No ads SDK, telemetry, network permission or music in this version.
 
-## Upload once from your phone
-1. Download **Mathzelio-1.2.0-Source.zip** from the ChatGPT conversation.
-2. In this repository, tap **Add file → Upload files**.
-3. Upload the ZIP as **Mathzelio-1.2.0-Source.zip** at the repository root (do not rename or extract it).
-4. Commit directly to **main**. This starts the GitHub Actions workflow automatically.
-5. Open **Actions → Build Mathzelio Android → latest run → Artifacts**.
+## Builds and verification
+Visit [GitHub Actions](../../actions/workflows/android.yml) and choose **Build Mathzelio Android**. Pushing the source archive or changing the workflow starts a fresh run.
 
-**Artifacts:**
-- `Mathzelio-1.2.0-Debug-APK` — installable test APK, **not for store**.
-- `Mathzelio-1.2.0-Signed-Release` — signed APK and AAB, created **only if the original, permanent signing key and all four secrets are provided**.
+The workflow extracts the archive, checks that the correct application is present, corrects the in-app About version label, rebuilds offline assets, runs 3,600 maths engine checks, compiles and lints Debug and Release variants, and uploads:
 
-## Signing
-Set GitHub **Settings → Secrets and variables → Actions → New repository secret**:
+- `Mathzelio-1.2.0-Debug-APK` — signed with GitHub's temporary debug key; **for testing only**.
+- `Mathzelio-1.2.0-Unsigned-Release` — unsigned Release APK and AAB that must be signed before publishing.
+- `Mathzelio-1.2.0-Signed-Release` — created when all four existing signing secrets are configured.
+- Android build/lint reports.
+
+The **first production Release APK/AAB** and a **new permanent certificate** were generated and checked independently in the private ChatGPT project session; neither signing keys nor passwords were uploaded to this public GitHub repository. **Save the original private key and password backup** before submission. If an earlier store release used a different certificate, do not replace that certificate.
+
+To enable later signed builds, set these four GitHub **Actions Secrets**, using the *same permanent key*:
+
 - `ANDROID_KEYSTORE_BASE64`
 - `ANDROID_STORE_PASSWORD`
 - `ANDROID_KEY_ALIAS`
 - `ANDROID_KEY_PASSWORD`
 
-If this app was published previously, preserve its original certificate; do not generate a replacement key. If it has never been published, generate one permanent release key once and back it up securely. Never upload the keystore or any password into a public repository.
+Never paste secret values into files, commits, GitHub Issues or screenshots.
 
-This is an offline kids' maths game (six worlds, 300 levels, 10 modes, English, Arabic, Portuguese). It currently has **no ads SDK or Internet permission**. The design uses pre-rendered 3D sprites, not real-time 3D. GitHub Actions builds the actual Android source rather than repackaging the prior TEST APK. Browser testing is not Android device QA.
+Certificate SHA-256 for the new proposed first-release key:
+`41:A5:F9:48:BB:5E:62:65:EB:C2:51:EB:2B:7E:A8:9A:85:DC:A5:84:AE:AF:9D:81:AC:32:62:4C:13:BB:11:06`
 
-**Before store submission:** install and test the signed APK, check the publisher signing certificate and target SDK, provide a working privacy-policy URL and developer contact, verify child-safety/store requirements, and ensure all screenshots describe real in-app functionality.
+## Store listing and privacy
+Read the [Privacy Policy](PRIVACY.md) (English, Arabic and Brazilian Portuguese). The app is intended for children aged 4–10. The store listing must accurately disclose the absence of ads, tracking, external transmission and purchases. Provide verified developer contact information before publication. Screenshots must be from the actual running app, not generated mockups.
+
+A genuine Android Gradle Release was built, signed and checked for package identity and signature integrity. **Physical-device install and interaction tests have not yet been carried out**; publication and approval have not been confirmed. Test on real devices before submitting it to any store.
