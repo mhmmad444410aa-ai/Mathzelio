@@ -266,10 +266,6 @@ public final class MainActivity extends Activity {
 
 game = asset/"game.js"
 replace(game,
-    "root.innerHTML=\`<main class=\"app-shell world-\${theme}\"",
-    "root.innerHTML=\`<main class=\"app-shell world-\${theme}\"",
-    "game script marker") # validate anchor
-replace(game,
     "window.scrollTo(0,0);}",
     "window.scrollTo(0,0);try{window.MathzelioNativeAds?.screen(screen);}catch(e){} }",
     "screen reporting")
