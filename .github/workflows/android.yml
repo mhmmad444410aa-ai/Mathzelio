@@ -1,0 +1,142 @@
+name: Build Mathzelio Android
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'Mathzelio-1.2.0-Source.zip'
+      - '.github/workflows/android.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check and unpack supplied source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="Mathzelio-1.2.0-Source.zip"
+          test -s "$archive" || { echo "::error::Upload $archive to the repository root first."; exit 1; }
+          python3 - <<'PY'
+          import zipfile, pathlib
+          path = pathlib.Path('Mathzelio-1.2.0-Source.zip')
+          with zipfile.ZipFile(path) as z:
+              names = z.namelist()
+              if not names or any(name.startswith('/') or '\\' in name or '..' in pathlib.PurePosixPath(name).parts for name in names):
+                  raise SystemExit('Unsafe archive paths')
+              if 'Mathzelio/app/build.gradle' not in names:
+                  raise SystemExit('Wrong source archive: missing Mathzelio/app/build.gradle')
+              z.extractall()
+          PY
+          test -f Mathzelio/tools/pack.py
+          test -f Mathzelio/app/src/main/java/com/mhmmad/mathzelio/MainActivity.java
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android API 36
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+
+      - name: Set up Gradle 8.11.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Repack local assets and run game engine unit checks
+        working-directory: Mathzelio
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/pack.py
+          node tests/engine.test.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app/src/main/assets/index.html')
+          assert p.exists() and p.stat().st_size > 500000
+          manifest=Path('app/src/main/AndroidManifest.xml').read_text()
+          assert 'android.permission.INTERNET' not in manifest
+          gradle=Path('app/build.gradle').read_text()
+          assert "applicationId 'com.mhmmad.mathzelio'" in gradle
+          print('Identity and offline packaging checks passed')
+          PY
+
+      - name: Compile and lint Android debug APK
+        working-directory: Mathzelio
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:lintDebug
+
+      - name: Inspect debug APK identity
+        working-directory: Mathzelio
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging app/build/outputs/apk/debug/app-debug.apk | tee debug-badging.txt
+          grep -q "package: name='com.mhmmad.mathzelio'" debug-badging.txt
+          sha256sum app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mathzelio-1.2.0-Debug-APK
+          path: Mathzelio/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Build store Release only with permanent signing secrets
+        working-directory: Mathzelio
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$KEYSTORE_B64" || -z "$SIGNING_STORE_PASSWORD" || -z "$SIGNING_KEY_ALIAS" || -z "$SIGNING_KEY_PASSWORD" ]]; then
+            echo "::notice::Signing secrets are missing. No store-ready release will be produced."
+            exit 0
+          fi
+          export SIGNING_STORE_FILE="$RUNNER_TEMP/mathzelio-release.jks"
+          trap 'rm -f "$SIGNING_STORE_FILE"' EXIT
+          umask 077
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$SIGNING_STORE_FILE"
+          test -s "$SIGNING_STORE_FILE"
+          gradle --no-daemon --stacktrace :app:assembleRelease :app:bundleRelease :app:lintRelease
+          mkdir -p delivery
+          cp app/build/outputs/apk/release/app-release.apk delivery/Mathzelio-1.2.0-release.apk
+          cp app/build/outputs/bundle/release/app-release.aab delivery/Mathzelio-1.2.0-release.aab
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs delivery/Mathzelio-1.2.0-release.apk | tee delivery/certificate.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging delivery/Mathzelio-1.2.0-release.apk | tee delivery/package-info.txt
+          grep -q "package: name='com.mhmmad.mathzelio'" delivery/package-info.txt
+          sha256sum delivery/Mathzelio-1.2.0-release.apk delivery/Mathzelio-1.2.0-release.aab | tee delivery/SHA256SUMS.txt
+
+      - name: Upload signed store release
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mathzelio-1.2.0-Signed-Release
+          path: Mathzelio/delivery/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Upload Android lint reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mathzelio-Android-Build-Reports
+          path: Mathzelio/app/build/reports/
+          if-no-files-found: ignore
+          retention-days: 14
