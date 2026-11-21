@@ -97,6 +97,20 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
+      - name: Build unsigned Release APK and AAB for offline signing
+        working-directory: Mathzelio
+        run: gradle --no-daemon --stacktrace :app:assembleRelease :app:bundleRelease :app:lintRelease
+
+      - name: Upload unsigned Release build outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mathzelio-1.2.0-Unsigned-Release
+          path: |
+            Mathzelio/app/build/outputs/apk/release/app-release-unsigned.apk
+            Mathzelio/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Build store Release only with permanent signing secrets
         working-directory: Mathzelio
         shell: bash
