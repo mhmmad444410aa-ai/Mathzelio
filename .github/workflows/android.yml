@@ -7,6 +7,7 @@ on:
     paths:
       - 'Mathzelio-1.2.0-Source.zip'
       - '.github/workflows/android.yml'
+      - '.github/scripts/apply_huawei_ads.py'
 
 permissions:
   contents: read
@@ -39,6 +40,9 @@ jobs:
           test -f Mathzelio/tools/pack.py
           test -f Mathzelio/app/src/main/java/com/mhmmad/mathzelio/MainActivity.java
 
+      - name: Apply native child-safe ads update to the Android source
+        run: python3 .github/scripts/apply_huawei_ads.py Mathzelio
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -63,13 +67,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          file = Path('app/src/main/assets/translations.js')
-          data = file.read_text(encoding='utf-8')
-          assert data.count('1.1.0') == 3, 'Expected source About screen version markers'
-          file.write_text(data.replace('1.1.0', '1.2.0'), encoding='utf-8')
-          PY
           python3 tools/pack.py
           node tests/engine.test.js
           python3 - <<'PY'
@@ -77,11 +74,37 @@ jobs:
           p=Path('app/src/main/assets/index.html')
           assert p.exists() and p.stat().st_size > 500000
           manifest=Path('app/src/main/AndroidManifest.xml').read_text()
-          assert 'android.permission.INTERNET' not in manifest
+          assert 'android.permission.INTERNET' in manifest
+          assert 'android.permission.ACCESS_NETWORK_STATE' in manifest
+          assert 'tools:node="remove"' in manifest
           gradle=Path('app/build.gradle').read_text()
           assert "applicationId 'com.mhmmad.mathzelio'" in gradle
-          print('Identity and offline packaging checks passed')
+          assert "versionCode 5; versionName '1.2.1'" in gradle
+          assert "com.huawei.hms:ads-lite:13.4.91.300" in gradle
+          native=Path('app/src/main/java/com/mhmmad/mathzelio/MainActivity.java').read_text()
+          assert 'r6ngbhqn6k' in native and 'c9tc18kd7o' in native
+          for child_tag in ['TAG_FOR_CHILD_PROTECTION_TRUE','PROMISE_TRUE','ALLOW_NON_PERSONALIZED','AD_CONTENT_CLASSIFICATION_W']:
+              assert child_tag in native
+          assert 'setTagForChildProtection' in native
+          assert 'MathzelioNativeAds' in native
+          assert "choice" not in native.lower()
+          assert "Do you want ads" not in Path('app/src/main/assets/index.html').read_text()
+          print('Child-directed ad flags and no-choice UI checks passed')
+          print('Identity and bundled-game packaging checks passed')
           PY
+
+      - name: Upload updated source (not just a theoretical patch)
+        run: |
+          cd Mathzelio
+          zip -qr ../Mathzelio-1.2.1-Source.zip . -x '*/build/*' '.gradle/*'
+
+      - name: Archive 1.2.1 updated Android source
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mathzelio-1.2.1-Source
+          path: Mathzelio-1.2.1-Source.zip
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Compile and lint Android debug APK
         working-directory: Mathzelio
@@ -99,7 +122,7 @@ jobs:
       - name: Upload test APK
         uses: actions/upload-artifact@v4
         with:
-          name: Mathzelio-1.2.0-Debug-APK
+          name: Mathzelio-1.2.1-Debug-APK
           path: Mathzelio/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
           if-no-files-found: error
@@ -111,7 +134,7 @@ jobs:
       - name: Upload unsigned Release build outputs
         uses: actions/upload-artifact@v4
         with:
-          name: Mathzelio-1.2.0-Unsigned-Release
+          name: Mathzelio-1.2.1-Unsigned-Release
           path: |
             Mathzelio/app/build/outputs/apk/release/app-release-unsigned.apk
             Mathzelio/app/build/outputs/bundle/release/app-release.aab
@@ -139,18 +162,18 @@ jobs:
           test -s "$SIGNING_STORE_FILE"
           gradle --no-daemon --stacktrace :app:assembleRelease :app:bundleRelease :app:lintRelease
           mkdir -p delivery
-          cp app/build/outputs/apk/release/app-release.apk delivery/Mathzelio-1.2.0-release.apk
-          cp app/build/outputs/bundle/release/app-release.aab delivery/Mathzelio-1.2.0-release.aab
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs delivery/Mathzelio-1.2.0-release.apk | tee delivery/certificate.txt
-          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging delivery/Mathzelio-1.2.0-release.apk | tee delivery/package-info.txt
+          cp app/build/outputs/apk/release/app-release.apk delivery/Mathzelio-1.2.1-release.apk
+          cp app/build/outputs/bundle/release/app-release.aab delivery/Mathzelio-1.2.1-release.aab
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs delivery/Mathzelio-1.2.1-release.apk | tee delivery/certificate.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging delivery/Mathzelio-1.2.1-release.apk | tee delivery/package-info.txt
           grep -q "package: name='com.mhmmad.mathzelio'" delivery/package-info.txt
-          sha256sum delivery/Mathzelio-1.2.0-release.apk delivery/Mathzelio-1.2.0-release.aab | tee delivery/SHA256SUMS.txt
+          sha256sum delivery/Mathzelio-1.2.1-release.apk delivery/Mathzelio-1.2.1-release.aab | tee delivery/SHA256SUMS.txt
 
       - name: Upload signed store release
         if: ${{ success() }}
         uses: actions/upload-artifact@v4
         with:
-          name: Mathzelio-1.2.0-Signed-Release
+          name: Mathzelio-1.2.1-Signed-Release
           path: Mathzelio/delivery/
           if-no-files-found: ignore
           retention-days: 30
