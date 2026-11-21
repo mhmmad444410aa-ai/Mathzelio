@@ -304,4 +304,13 @@ replace(translations, "1.1.0", "1.2.1", "about screen version")
    Mandatory legal disclosures remain in the parent-gated privacy area. */
 window.MathzelioAds=Object.freeze({native:true,eligible:['home','map','progress','win']});
 """, encoding="utf-8")
+# Huawei SDK itself references NotificationManager internally, even though this app
+# does not send notifications or request the runtime notification permission.
+# Scope the lint suppression to that external-SDK manifest warning only.
+(app/"lint.xml").write_text(
+    '<lint>\n'
+    '  <issue id="NotificationPermission">\n'
+    '    <ignore path="src/main/AndroidManifest.xml"/>\n'
+    '  </issue>\n'
+    '</lint>\n', encoding="utf-8")
 print("Patched Mathzelio for Petal Ads: 1.2.1 (5), child-directed/non-personalised, no ads toggle.")
