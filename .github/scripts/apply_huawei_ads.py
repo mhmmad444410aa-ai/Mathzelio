@@ -284,6 +284,18 @@ replace(translations, "لا إعلانات في هذا الإصدار",
 replace(translations, "Sem anúncios nesta versão",
         "Podem aparecer anúncios não personalizados e adequados para crianças, nunca durante as questões.",
         "privacy Portuguese")
+replace(translations,
+        "Mathzelio works offline. It stores learning progress, settings and a parent PIN verifier only on this device. No accounts, personal information, location, tracking, advertisements or external links are used in this version. Clear app data in device settings to delete local information.",
+        "Maths activities and progress work offline. Huawei Petal Ads may use network access to display child-appropriate, non-personalised ads. Game records, settings and the parent PIN verifier remain on this device; we do not send game scores to advertisers. For SDK data processing, see the public privacy policy. Clear app data to delete local records.",
+        "English privacy notice")
+replace(translations,
+        "تعمل ماثزيليو دون إنترنت، وتخزن التقدم التعليمي والإعدادات وبيانات التحقق من رمز الوالدين على الجهاز فقط. لا حسابات ولا معلومات شخصية ولا موقع ولا تتبع ولا إعلانات أو روابط خارجية في هذا الإصدار. لمسح المعلومات احذف بيانات التطبيق من إعدادات الجهاز.",
+        "تعمل أنشطة الحساب وحفظ التقدم دون اتصال. قد يستخدم نظام إعلانات هواوي الإنترنت لعرض إعلانات غير مخصّصة ومناسبة للأطفال. تبقى النتائج والإعدادات ورمز الوالدين محفوظة محليًا، ولا نرسل نتائج اللعب إلى المعلنين. راجع سياسة الخصوصية المنشورة لمعلومات معالجة بيانات SDK. امسح بيانات التطبيق لحذف البيانات المحلية.",
+        "Arabic privacy notice")
+replace(translations,
+        "Mathzelio funciona sem internet e guarda o progresso, as configurações e o verificador do PIN apenas no aparelho. Esta versão não usa contas, informações pessoais, localização, rastreamento, anúncios ou links externos. Limpe os dados do app nas configurações para excluí-los.",
+        "As atividades e o progresso funcionam sem internet. O Petal Ads da Huawei pode usar a rede para mostrar anúncios não personalizados e adequados para crianças. O progresso, as configurações e o PIN ficam no aparelho; não enviamos resultados aos anunciantes. Consulte a política de privacidade pública para saber mais sobre o SDK. Limpe os dados do app para apagar registros locais.",
+        "Portuguese privacy notice")
 replace(translations, "1.1.0", "1.2.1", "about screen version")
 (asset/"ad-policy.js").write_text(
 """/* Ads are implemented ONLY in the native Huawei SDK.
